@@ -22,23 +22,26 @@ def initialize_game(self):
     print("#" * 60)
     print("Welcome to FFRPG - The Ultimate FlyFishing Experience")
     print("#" * 60)
-    self.player = self.create_character()
+    self.player = self.choose_character()
+    """each character class is a separate thing"""
     self.current_location = self.select_location()
     self.weather = self.check_weather()
     self.tod = self.get_time()
     self.game_runnning = True
 
-def create_character(self):
+def choose_character(pick_A):
     """create new character"""
     print("Character Creation, Who are you?")
     print("--" * 60)
     name = input("Enter your name, angler: ")
     print("--" * 60)
-    print("\n Distribute these 20 xp points among these attributes:")
-    print("Casting, Patience, Observation, Knowledge, Endurance")
+    print("\n Pick one fo these that speaks to you: ")
+    print("\n1. Outlaw, \n2. Explorer,\n3. Sage,\n4.  Waste-of-Rod,")
+    pick_A = input()
 
-    attributes = {}
-    points_available = 20
+    def character(self):
+
+    
 
 
     for attribute in ("Casting","Patience","Observation","Knowledge","Endurance"):
@@ -54,7 +57,8 @@ def create_character(self):
             except ValueError:
                 print("Please enter a valid number, come on...")
 
-    return player(name, attributes)
+    return pick_A(name, attributes)
+
 
 def select_location(self):
     """sets location for the player which brings environment variables"""
