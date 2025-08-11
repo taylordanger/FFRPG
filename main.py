@@ -35,7 +35,7 @@ def choose_character(pick_A):
     print("--" * 60)
     name = input("Enter your name, angler: ")
     print("--" * 60)
-    print("\n Pick one fo these that speaks to you: ")
+    print("\n Pick one of these that speaks to you: ")
     print("\n1. Outlaw, \n2. Explorer,\n3. Sage,\n4.  Waste-of-Rod,")
     pick_A = input()
 
