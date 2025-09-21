@@ -1,0 +1,26 @@
+{
+  "player": {
+    "name": "FishMan MckFriendly",
+    "level": 0,
+    "xp": 0,
+    "catch_record": []
+  },
+  "equipment": {
+    "rod": {
+      "length": 7,
+      "weight": 4,
+      "material": "Bamboo"
+    },
+    "leader": {
+      "material": "Fluorocarbon",
+      "tippet": "6X (2.5kg)",
+      "length": 8
+    },
+    "fly": {
+      "pattern": "Tellico Nymph",
+      "category": "Wet Flies",
+      "size": 16
+    }
+  },
+  "location": "Alpine Lake"
+}

@@ -1,9 +1,8 @@
 import os
 import random
 import time
+import json
 from typing import Dict, List, Tuple
-import tkinter as tk
-from tkinter import ttk
 
 
 class FFRPG:
@@ -43,12 +42,17 @@ class FFRPG:
         elif location_type == "stream":
             self._generate_stream()
         
-        # Copy to overhead view
+        # Generate fish in the location
+        self.generate_fish()
+        
+        # Copy to overhead view (but don't show fish)
         for y in range(self.grid_size):
             for x in range(self.grid_size):
-                self.overhead_grid[y][x] = self.create_empty_grid_OH()[y][x]
+                if self.fishfinder_grid[y][x] == '.':
+                    self.overhead_grid[y][x] = '.'
+                else:
+                    self.overhead_grid[y][x] = '0'
                 
-        
         self.current_location = location_type
 
     def generate_fish(self):
@@ -364,12 +368,39 @@ class FFRPG:
         print("\nCasting...")
         time.sleep(1)
         
-        # Determine if there's a bite
+        # Determine if there's a bite - higher chance if fish are nearby
         bite_chance = random.random()
-        if bite_chance > 0.7:  # 30% chance of a bite
+        fish_nearby = False
+        
+        # Check for fish in the cast position and surrounding area
+        for dy in range(-1, 2):
+            for dx in range(-1, 2):
+                check_y, check_x = row + dy, col + dx
+                if (0 <= check_y < self.grid_size and 0 <= check_x < self.grid_size and 
+                    self.fishfinder_grid[check_y][check_x] == 'F'):
+                    fish_nearby = True
+                    break
+        
+        # Adjust bite chance based on equipment match and fish presence
+        base_chance = 0.4 if fish_nearby else 0.15
+        
+        # Equipment bonuses
+        if self.current_fly.category == "Dry Flies" and "Stream" in self.current_location:
+            base_chance += 0.2
+        elif self.current_fly.category == "Streamers" and "Lake" in self.current_location:
+            base_chance += 0.15
+        elif self.current_fly.category == "Nymphs":
+            base_chance += 0.1  # Nymphs work everywhere
+            
+        if bite_chance < base_chance:
+            # Remove fish from that position if caught
+            if fish_nearby:
+                self.fishfinder_grid[row][col] = '0'
             self._fish_on(row, col)
         else:
             print("No bites. Try casting again or change your approach.")
+            if fish_nearby:
+                print("Your fishfinder shows fish activity in this area!")
             input("Press Enter to continue...")
     
     def _fish_on(self, row, col):
@@ -445,9 +476,10 @@ class FFRPG:
             print("5. Start Fishing")
             print("6. View Catch Record")
             print("7. Save Game")
-            print("8. Quit")
+            print("8. Load Game")
+            print("9. Quit")
             
-            choice = input("\nEnter choice (1-8): ")
+            choice = input("\nEnter choice (1-9): ")
             
             if choice == "1":
                 self.build_leader()
@@ -464,6 +496,8 @@ class FFRPG:
             elif choice == "7":
                 self.save_game()
             elif choice == "8":
+                self.load_game()
+            elif choice == "9":
                 if input("Are you sure you want to quit? (y/n): ").lower() == 'y':
                     print("Thanks for playing FFRPG!")
                     break
@@ -482,9 +516,90 @@ class FFRPG:
     
     def save_game(self):
         print("\nSaving game...")
-        # In a real implementation, this would save to a file
-        print("Game saved!")
+        try:
+            save_data = {
+                'player': {
+                    'name': self.player.name,
+                    'level': self.player.level,
+                    'xp': self.player.xp,
+                    'catch_record': self.player.catch_record
+                },
+                'equipment': {
+                    'rod': {
+                        'length': self.current_rod.length if self.current_rod else None,
+                        'weight': self.current_rod.weight if self.current_rod else None,
+                        'material': self.current_rod.material if self.current_rod else None
+                    } if self.current_rod else None,
+                    'leader': {
+                        'material': self.current_leader.material if self.current_leader else None,
+                        'tippet': self.current_leader.tippet if self.current_leader else None,
+                        'length': self.current_leader.length if self.current_leader else None
+                    } if self.current_leader else None,
+                    'fly': {
+                        'pattern': self.current_fly.pattern if self.current_fly else None,
+                        'category': self.current_fly.category if self.current_fly else None,
+                        'size': self.current_fly.size if self.current_fly else None
+                    } if self.current_fly else None
+                },
+                'location': self.current_location
+            }
+            
+            with open('ffrpg_save.json', 'w') as f:
+                json.dump(save_data, f, indent=2)
+            
+            print("Game saved successfully!")
+        except Exception as e:
+            print(f"Error saving game: {e}")
+        
         input("\nPress Enter to continue...")
+    
+    def load_game(self):
+        try:
+            with open('ffrpg_save.json', 'r') as f:
+                save_data = json.load(f)
+            
+            # Load player data
+            player_data = save_data['player']
+            self.player.name = player_data['name']
+            self.player.level = player_data['level']
+            self.player.xp = player_data['xp']
+            self.player.catch_record = player_data['catch_record']
+            
+            # Load equipment
+            equipment = save_data['equipment']
+            
+            if equipment['rod']:
+                rod_data = equipment['rod']
+                self.current_rod = FlyRod(rod_data['length'], rod_data['weight'], rod_data['material'])
+            
+            if equipment['leader']:
+                leader_data = equipment['leader']
+                self.current_leader = Leader(leader_data['material'], leader_data['tippet'], leader_data['length'])
+            
+            if equipment['fly']:
+                fly_data = equipment['fly']
+                self.current_fly = Fly(fly_data['pattern'], fly_data['category'], fly_data['size'])
+            
+            # Load location
+            if save_data['location']:
+                self.current_location = save_data['location']
+                # Regenerate the location
+                location_type = "river"
+                if "Stream" in self.current_location:
+                    location_type = "stream"
+                elif "Lake" in self.current_location:
+                    location_type = "lake"
+                self.generate_location(location_type)
+            
+            print("Game loaded successfully!")
+            return True
+            
+        except FileNotFoundError:
+            print("No save file found.")
+            return False
+        except Exception as e:
+            print(f"Error loading game: {e}")
+            return False
 
 
 class Player:
