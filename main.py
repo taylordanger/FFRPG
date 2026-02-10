@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple
 
 class FFRPG:
     def __init__(self):
-        self.player = Player("FishMan MckFriendly", 0, 0)
+        self.player = Player("Shrek", 0, 0)
         self.grid_size = 10
         self.fishfinder_grid = self.create_empty_grid_ff()
         self.overhead_grid = self.create_empty_grid_OH()
