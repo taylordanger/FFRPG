@@ -165,9 +165,58 @@
 
         <form method="post">
           <fieldset>
+            <legend>Leader</legend>
+            <div class="row">
+              <select name="leader_material">
+                {% for m in leader_line_types %}
+                <option value="{{ m }}">{{ m }}</option>
+                {% endfor %}
+              </select>
+              <select name="leader_tippet">
+                {% for d in leader_diameters %}
+                <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+              </select>
+              <input
+                type="text"
+                name="leader_length"
+                maxlength="2"
+                placeholder="Length (7-12 ft)"
+                autocomplete="off"
+              />
+              <button type="submit" name="action" value="build_leader">Build Leader</button>
+            </div>
+          </fieldset>
+        </form>
+
+        <form method="post">
+          <fieldset>
+            <legend>Rod</legend>
+            <div class="row">
+              <select name="rod_length">
+                {% for L in rod_lengths %}
+                <option value="{{ L }}">{{ L }}'</option>
+                {% endfor %}
+              </select>
+              <select name="rod_weight">
+                {% for w in rod_weights %}
+                <option value="{{ w }}">{{ w }}-weight</option>
+                {% endfor %}
+              </select>
+              <select name="rod_material">
+                {% for m in rod_materials %}
+                <option value="{{ m }}">{{ m }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" name="action" value="build_rod">Build Rod</button>
+            </div>
+          </fieldset>
+        </form>
+
+        <form method="post">
+          <fieldset>
             <legend>Game</legend>
             <div class="row">
-              <button type="submit" name="action" value="build_gear">Build Default Gear</button>
               <button type="submit" name="action" value="reset">New Game</button>
             </div>
           </fieldset>
@@ -190,8 +239,25 @@
 
         <form method="post">
           <fieldset>
-            <legend>Fishing</legend>
+            <legend>Fly &amp; Fishing</legend>
             <div class="row">
+              <select name="fly_pattern">
+                {% for category, patterns in fly_patterns.items() %}
+                <optgroup label="{{ category }}">
+                  {% for p in patterns %}
+                  <option value="{{ p }}">{{ p }}</option>
+                  {% endfor %}
+                </optgroup>
+                {% endfor %}
+              </select>
+              <select name="fly_size">
+                {% for s in fly_sizes %}
+                <option value="{{ s }}">Size {{ s }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" name="action" value="build_fly">Select Fly</button>
+            </div>
+            <div class="row" style="margin-top: 6px;">
               <input
                 type="text"
                 name="cast"
@@ -208,19 +274,20 @@
       {% if last_message %}
       <div class="message">{{ last_message }}</div>
       {% endif %}
-
-      {% if leaderboard %}
       <div class="controls" style="margin-top: 8px;">
         <fieldset style="width: 100%;">
           <legend>Leaderboard</legend>
           <pre style="margin-top: 4px; background: #020305; border-color: #30353f;">
 Name                 Fish  Best  XP
 ------------------------------------
-{% for entry in leaderboard %}{{ "% -18s"|format(entry.name) }}  {{ "%3d"|format(entry.total_fish) }}   {{ "%3d"|format(entry.best_size) }}  {{ "%5d"|format(entry.xp) }}
-{% endfor %}</pre>
+{% if leaderboard %}
+{% for entry in leaderboard %}{{ "% -18s"|format(entry["name"]) }}  {{ "%3d"|format(entry["total_fish"]) }}   {{ "%3d"|format(entry["best_size"]) }}  {{ "%5d"|format(entry["xp"]) }}
+{% endfor %}
+{% else %}
+(no records yet)
+{% endif %}</pre>
         </fieldset>
       </div>
-      {% endif %}
     </div>
   </body>
 </html>

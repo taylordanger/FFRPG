@@ -17,6 +17,39 @@ LEADERBOARD_FILE = "leaderboard.json"
 game = FFRPG()
 last_message = "Welcome to FFRPG (web lofi edition). Use the controls below to play."
 
+# Static option sets mirroring the console game
+LEADER_LINE_TYPES = ["Fluorocarbon", "Monofilament", "Braided"]
+LEADER_DIAMETERS = [
+    "7X (2.0kg)",
+    "6X (2.5kg)",
+    "5X (3.0kg)",
+    "4X (3.5kg)",
+    "3X (4.5kg)",
+    "2X (6.0kg)",
+    "1X (7.0kg)",
+    "0X (8.0kg)",
+]
+
+ROD_LENGTHS = [7, 8, 9, 10]
+ROD_WEIGHTS = [3, 4, 5, 6, 7, 8]
+ROD_MATERIALS = ["Graphite", "Fiberglass", "Bamboo"]
+
+FLY_CATEGORIES = ["Dry Flies", "Wet Flies", "Nymphs", "Streamers"]
+FLY_PATTERNS = {
+    "Dry Flies": ["Adams", "Elk Hair Caddis", "Parachute Hopper", "Royal Wulff"],
+    "Wet Flies": ["Partridge & Orange", "Soft Hackle Hare's Ear", "Tellico Nymph"],
+    "Nymphs": ["Pheasant Tail", "Gold-Ribbed Hare's Ear", "Zebra Midge", "Copper John"],
+    "Streamers": ["Woolly Bugger", "Clouser Minnow", "Muddler Minnow", "Zonker"],
+}
+FLY_SIZES = [22, 20, 18, 16, 14, 12, 10, 8, 6, 4]
+
+# Helper to derive category from pattern (for robustness)
+PATTERN_TO_CATEGORY = {
+    pattern: category
+    for category, patterns in FLY_PATTERNS.items()
+    for pattern in patterns
+}
+
 
 def ensure_basic_setup():
     """Ensure the game has some sensible defaults for web play."""
@@ -116,12 +149,66 @@ def index():
                 last_message = "Name cannot be empty."
             return redirect(url_for("index"))
 
-        if action == "build_gear":
-            # Simple default setup mirroring the console defaults
-            game.current_rod = FlyRod(9, 5, "Graphite")
-            game.current_leader = Leader("Monofilament", "5X (3.0kg)", 9)
-            game.current_fly = Fly("Adams", "Dry Flies", 16)
-            last_message = "Built default gear: 9' 5wt Graphite rod, 9' Mono 5X leader, Adams size 16."
+        if action == "build_leader":
+            material = request.form.get("leader_material") or "Monofilament"
+            if material not in LEADER_LINE_TYPES:
+                material = "Monofilament"
+
+            tippet = request.form.get("leader_tippet") or "5X (3.0kg)"
+            if tippet not in LEADER_DIAMETERS:
+                tippet = "5X (3.0kg)"
+
+            try:
+                length_val = int(request.form.get("leader_length") or 9)
+            except ValueError:
+                length_val = 9
+            if length_val < 7 or length_val > 12:
+                length_val = 9
+
+            game.current_leader = Leader(material, tippet, length_val)
+            last_message = f"Leader built: {material}, {tippet}, {length_val} feet."
+            return redirect(url_for("index"))
+
+        if action == "build_rod":
+            try:
+                length_val = int(request.form.get("rod_length") or 9)
+            except ValueError:
+                length_val = 9
+            if length_val not in ROD_LENGTHS:
+                length_val = 9
+
+            try:
+                weight_val = int(request.form.get("rod_weight") or 5)
+            except ValueError:
+                weight_val = 5
+            if weight_val not in ROD_WEIGHTS:
+                weight_val = 5
+
+            material = request.form.get("rod_material") or "Graphite"
+            if material not in ROD_MATERIALS:
+                material = "Graphite"
+
+            game.current_rod = FlyRod(length_val, weight_val, material)
+            last_message = f"Rod built: {length_val}' {weight_val}-weight {material}."
+            return redirect(url_for("index"))
+
+        if action == "build_fly":
+            # Category is mostly for flavour; we derive the true category from pattern
+            selected_pattern = request.form.get("fly_pattern") or "Adams"
+            if selected_pattern not in PATTERN_TO_CATEGORY:
+                selected_pattern = "Adams"
+
+            category = PATTERN_TO_CATEGORY[selected_pattern]
+
+            try:
+                size_val = int(request.form.get("fly_size") or 16)
+            except ValueError:
+                size_val = 16
+            if size_val not in FLY_SIZES:
+                size_val = 16
+
+            game.current_fly = Fly(selected_pattern, category, size_val)
+            last_message = f"Fly selected: {selected_pattern}, {category}, size {size_val}."
             return redirect(url_for("index"))
 
         if action == "location":
@@ -156,6 +243,14 @@ def index():
         last_message=last_message,
         leaderboard=load_leaderboard()[:10],  # top 10
         player_name=game.player.name,
+        leader_line_types=LEADER_LINE_TYPES,
+        leader_diameters=LEADER_DIAMETERS,
+        rod_lengths=ROD_LENGTHS,
+        rod_weights=ROD_WEIGHTS,
+        rod_materials=ROD_MATERIALS,
+        fly_categories=FLY_CATEGORIES,
+        fly_patterns=FLY_PATTERNS,
+        fly_sizes=FLY_SIZES,
     )
 
 
