@@ -99,31 +99,41 @@ class FFRPG:
                 if x < left_bank or x > right_bank:
                     self.fishfinder_grid[y][x] = '.'
     
-    def display_game(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
-        
+    def display_game(self, as_string: bool = False) -> str | None:
+        """Render the current game state.
+
+        If as_string is False (default), this behaves like the original
+        terminal version and prints directly. If True, it returns the
+        rendered text as a single string without clearing the screen.
+        """
+        lines: List[str] = []
+
         # Top border and header
-        print("#" * 83)
-        print(" " * 32 + "FFRPG:FlyFlishingRPG")
-        print("#" * 83)
+        lines.append("#" * 83)
+        lines.append(" " * 32 + "FFRPG:FlyFlishingRPG")
+        lines.append("#" * 83)
         
         # Player info and equipment
-        print(f"Fisherman: {self.player.name}" + " " * 10 + 
-              f"Flyrod: {self.current_rod or ''}" + " " * 18 + 
-              f"Fly: {self.current_fly or ''}")
+        lines.append(
+            f"Fisherman: {self.player.name}" + " " * 10 +
+            f"Flyrod: {self.current_rod or ''}" + " " * 18 +
+            f"Fly: {self.current_fly or ''}"
+        )
         
-        print(f"lvl: {self.player.level} xp: {self.player.xp:06d} total fish: {len(self.player.catch_record)}" + " " * 6 +
-              f"Leader: {self.current_leader or ''}" + " " * 18 + 
-              f"Location: {self.current_location or ''}")
+        lines.append(
+            f"lvl: {self.player.level} xp: {self.player.xp:06d} total fish: {len(self.player.catch_record)}" + " " * 6 +
+            f"Leader: {self.current_leader or ''}" + " " * 18 +
+            f"Location: {self.current_location or ''}"
+        )
         
-        print("-" * 83)
+        lines.append("-" * 83)
         
         # Grid headers
-        print("---------------fishfinder----------------|---------------OverHead--------------------")
-        print(" " * 40 + "|")
+        lines.append("---------------fishfinder----------------|---------------OverHead--------------------")
+        lines.append(" " * 40 + "|")
         
         # Column labels
-        print("      a  b  c  d  e  f  g  h  i  j       |            a  b  c  d  e  f  g  h  i  j")
+        lines.append("      a  b  c  d  e  f  g  h  i  j       |            a  b  c  d  e  f  g  h  i  j")
         
         # Display both grids side by side
         for y in range(self.grid_size):
@@ -137,9 +147,20 @@ class FFRPG:
             for x in range(self.grid_size):
                 right_row += f"{self.overhead_grid[y][x]}  "
             
-            print(f"{left_row}      |{right_row}")
+            lines.append(f"{left_row}      |{right_row}")
         
-        print("\n" + "#" * 83)
+        lines.append("\n" + "#" * 83)
+
+        rendered = "\n".join(lines)
+
+        if as_string:
+            # For web/other front-ends, just return the text
+            return rendered
+        
+        # Original terminal behaviour
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print(rendered)
+        return None
     
     def build_leader(self):
         print("\nBuild Your Leader")
@@ -402,6 +423,136 @@ class FFRPG:
             if fish_nearby:
                 print("Your fishfinder shows fish activity in this area!")
             input("Press Enter to continue...")
+
+    def start_fishing_web(self, cast_position: str | None = None) -> str:
+        """Web-friendly version of start_fishing.
+
+        This avoids input()/print() and instead returns a summary string
+        describing what happened during the cast.
+        """
+        messages: List[str] = []
+
+        # Ensure basic equipment and location; build simple defaults if needed
+        if not self.current_rod:
+            self.current_rod = FlyRod(9, 5, "Graphite")
+            messages.append("No rod equipped: built a default 9' 5-weight Graphite rod.")
+        if not self.current_leader:
+            self.current_leader = Leader("Monofilament", "5X (3.0kg)", 9)
+            messages.append("No leader equipped: tied on a 9' Monofilament 5X leader.")
+        if not self.current_fly:
+            self.current_fly = Fly("Adams", "Dry Flies", 16)
+            messages.append("No fly selected: tied on an Adams, size 16.")
+        if not self.current_location:
+            # Default to Mountain Stream / stream type
+            self.current_location = "Mountain Stream"
+            self.generate_location("stream")
+            messages.append("No location set: heading to a Mountain Stream.")
+
+        messages.append("Starting to fish...")
+
+        # Determine cast position
+        if cast_position:
+            cast = cast_position.strip().lower()
+            if len(cast) != 2 or not cast[0].isalpha() or not cast[1].isdigit():
+                messages.append("Invalid position format. Use letter+number (e.g., b3).")
+                return "\n".join(messages)
+            col = ord(cast[0]) - ord('a')
+            row = int(cast[1]) - 1
+        else:
+            # Random cast somewhere on the grid
+            col = random.randint(0, self.grid_size - 1)
+            row = random.randint(0, self.grid_size - 1)
+            cast = f"{chr(ord('a') + col)}{row + 1}"
+
+        if col < 0 or col >= self.grid_size or row < 0 or row >= self.grid_size:
+            messages.append("Position out of bounds!")
+            return "\n".join(messages)
+        
+        if self.fishfinder_grid[row][col] == '.':
+            messages.append(f"You cast to {cast}, but that's dry land.")
+            messages.append("Try a different spot on the water.")
+            return "\n".join(messages)
+        
+        # Show the cast on the overhead view
+        self.overhead_grid[row][col] = 'X'
+        messages.append(f"You cast to {cast}...")
+        
+        # Determine if there's a bite - higher chance if fish are nearby
+        bite_chance = random.random()
+        fish_nearby = False
+        
+        # Check for fish in the cast position and surrounding area
+        for dy in range(-1, 2):
+            for dx in range(-1, 2):
+                check_y, check_x = row + dy, col + dx
+                if (0 <= check_y < self.grid_size and 0 <= check_x < self.grid_size and 
+                    self.fishfinder_grid[check_y][check_x] == 'F'):
+                    fish_nearby = True
+                    break
+
+        # Adjust bite chance based on equipment match and fish presence
+        base_chance = 0.4 if fish_nearby else 0.15
+        
+        # Equipment bonuses
+        if self.current_fly.category == "Dry Flies" and "Stream" in self.current_location:
+            base_chance += 0.2
+        elif self.current_fly.category == "Streamers" and "Lake" in self.current_location:
+            base_chance += 0.15
+        elif self.current_fly.category == "Nymphs":
+            base_chance += 0.1  # Nymphs work everywhere
+        
+        if bite_chance >= base_chance:
+            messages.append("No bites. Try casting again or change your approach.")
+            if fish_nearby:
+                messages.append("Your fishfinder shows fish activity in this area!")
+            return "\n".join(messages)
+
+        # If we get here, fish on!
+        messages.append("FISH ON!")
+
+        # Determine fish species based on location
+        fish_types = {
+            "Mountain Stream": ["Brook Trout", "Rainbow Trout", "Brown Trout"],
+            "River Bend": ["Brown Trout", "Rainbow Trout", "Smallmouth Bass"],
+            "Alpine Lake": ["Lake Trout", "Arctic Char", "Grayling"],
+            "Coastal Estuary": ["Striped Bass", "Sea-run Cutthroat", "Salmon"]
+        }
+        
+        location_fish = fish_types.get(self.current_location, ["Generic Fish"])
+        fish_species = random.choice(location_fish)
+        
+        # Determine fish size
+        min_size = 6
+        max_size = 24
+        
+        # Adjust based on rod and leader match
+        if self.current_rod.weight == 3 and "Trout" in fish_species:
+            max_size = 18  # Lighter rod better for smaller fish
+        elif self.current_rod.weight >= 7 and "Bass" in fish_species:
+            min_size = 10  # Heavier rod better for larger fish
+        
+        size = random.randint(min_size, max_size)
+        messages.append(f"It's a {size}-inch {fish_species}!")
+        
+        # Simple automated fighting mechanic
+        fight_rounds = 3
+        successful_rounds = 0
+        for _ in range(fight_rounds):
+            # Give the player a slightly better than even chance overall
+            if random.random() < 0.65:
+                successful_rounds += 1
+        
+        if successful_rounds >= 2:
+            messages.append(f"Success! You landed the {size}-inch {fish_species}!")
+            self.player.add_catch(fish_species, size)
+            self.player.add_xp(size * 10)
+            # Remove fish from that position if one was there
+            if self.fishfinder_grid[row][col] == 'F':
+                self.fishfinder_grid[row][col] = '0'
+        else:
+            messages.append("The fish got away at the last moment!")
+
+        return "\n".join(messages)
     
     def _fish_on(self, row, col):
         print("\nFISH ON!")

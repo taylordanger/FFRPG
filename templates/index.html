@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FFRPG – Lofi Web Edition</title>
+    <style>
+      :root {
+        --bg: #050608;
+        --panel: #0b0c10;
+        --border: #333842;
+        --text: #e6e6e6;
+        --accent: #79c0ff;
+        --accent-soft: #242a36;
+        --message-bg: #041c10;
+        --message-border: #1f6f3b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 16px;
+        background: radial-gradient(circle at top, #111320 0, var(--bg) 45%);
+        color: var(--text);
+        font-family: "Fira Code", "Cascadia Mono", Menlo, monospace;
+        display: flex;
+        justify-content: center;
+      }
+
+      .frame {
+        max-width: 980px;
+        width: 100%;
+        background: linear-gradient(180deg, #050609 0, #050609 60%, #050609 100%);
+        border: 1px solid var(--border);
+        box-shadow: 0 0 0 1px #000, 0 18px 40px rgba(0, 0, 0, 0.85);
+        padding: 12px 12px 16px;
+      }
+
+      .bezel {
+        border: 1px solid #1b1f27;
+        padding: 8px;
+        background: radial-gradient(circle at top left, #171b24 0, #050609 55%);
+      }
+
+      pre {
+        margin: 0;
+        padding: 8px 10px;
+        background: #000;
+        color: var(--text);
+        border: 1px solid #262b33;
+        border-radius: 2px;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .controls {
+        margin-top: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      fieldset {
+        border: 1px solid var(--border);
+        padding: 8px 10px 10px;
+        background: var(--panel);
+        min-width: 0;
+      }
+
+      legend {
+        padding: 0 6px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--accent);
+      }
+
+      button,
+      select,
+      input[type="text"] {
+        background: #05070a;
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 4px 8px;
+        font-family: inherit;
+        font-size: 12px;
+      }
+
+      button {
+        cursor: pointer;
+        background: var(--accent-soft);
+        border-color: #3a4453;
+      }
+
+      button:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      select {
+        min-width: 150px;
+      }
+
+      input[type="text"] {
+        width: 80px;
+      }
+
+      .message {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: var(--message-bg);
+        border: 1px solid var(--message-border);
+        border-radius: 2px;
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      @media (max-width: 800px) {
+        body {
+          padding: 8px;
+        }
+
+        .frame {
+          padding: 8px;
+        }
+
+        pre {
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="bezel">
+        <pre>{{ display_text }}</pre>
+      </div>
+
+      <div class="controls">
+        <form method="post">
+          <fieldset>
+            <legend>Player</legend>
+            <div class="row">
+              <input
+                type="text"
+                name="player_name"
+                maxlength="24"
+                placeholder="Your name"
+                autocomplete="off"
+                value="{{ player_name }}"
+              />
+              <button type="submit" name="action" value="set_name">Set Name</button>
+            </div>
+          </fieldset>
+        </form>
+
+        <form method="post">
+          <fieldset>
+            <legend>Game</legend>
+            <div class="row">
+              <button type="submit" name="action" value="build_gear">Build Default Gear</button>
+              <button type="submit" name="action" value="reset">New Game</button>
+            </div>
+          </fieldset>
+        </form>
+
+        <form method="post">
+          <fieldset>
+            <legend>Location</legend>
+            <div class="row">
+              <select name="location">
+                <option value="Mountain Stream">Mountain Stream</option>
+                <option value="River Bend">River Bend</option>
+                <option value="Alpine Lake">Alpine Lake</option>
+                <option value="Coastal Estuary">Coastal Estuary</option>
+              </select>
+              <button type="submit" name="action" value="location">Set Location</button>
+            </div>
+          </fieldset>
+        </form>
+
+        <form method="post">
+          <fieldset>
+            <legend>Fishing</legend>
+            <div class="row">
+              <input
+                type="text"
+                name="cast"
+                maxlength="2"
+                placeholder="e.g. b3"
+                autocomplete="off"
+              />
+              <button type="submit" name="action" value="cast">Cast</button>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      {% if last_message %}
+      <div class="message">{{ last_message }}</div>
+      {% endif %}
+
+      {% if leaderboard %}
+      <div class="controls" style="margin-top: 8px;">
+        <fieldset style="width: 100%;">
+          <legend>Leaderboard</legend>
+          <pre style="margin-top: 4px; background: #020305; border-color: #30353f;">
+Name                 Fish  Best  XP
+------------------------------------
+{% for entry in leaderboard %}{{ "% -18s"|format(entry.name) }}  {{ "%3d"|format(entry.total_fish) }}   {{ "%3d"|format(entry.best_size) }}  {{ "%5d"|format(entry.xp) }}
+{% endfor %}</pre>
+        </fieldset>
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>
